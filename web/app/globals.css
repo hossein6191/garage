@@ -1,0 +1,314 @@
+@import "tailwindcss";
+
+/* Garage: a workshop job card. A charcoal pegboard wall; oil-stained buff card stock pinned to it; the
+   customer's lines in carbon-copy blue handwriting; verdicts in rubber stamp (covered green, not red,
+   unclear amber); a punched time-clock strip for every transaction; a safety-orange lever for the one
+   thing to do. Barlow Condensed for headings, IBM Plex Sans to read, IBM Plex Mono for amounts, Kalam
+   for the handwriting. */
+
+@theme {
+  --color-wall: #23272a;
+  --color-wall-2: #30363a;
+  --color-wall-3: #4a5257;
+  --color-card: #ebddbf;
+  --color-card-2: #f4ead5;
+  --color-card-3: #dcc89f;
+  --color-rule: #c8b286;
+  --color-ink: #221e19;
+  --color-ink-2: #4b4236;
+  --color-ink-3: #786b57;
+  --color-carbon: #2a4a9c;
+  --color-carbon-wash: #e1e6f3;
+  --color-ok: #2c7639;
+  --color-ok-wash: #d9e9d4;
+  --color-no: #ad261e;
+  --color-no-wash: #f3d8d0;
+  --color-amber: #a86e04;
+  --color-amber-wash: #f5e5bf;
+  --color-safety: #e8661c;
+  --color-safety-deep: #a8460c;
+  --color-punch: #7b2d5b;
+  --color-steel: #a3adb2;
+
+  --font-head: var(--font-barlow), "Arial Narrow", ui-sans-serif, sans-serif;
+  --font-body: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-hand: var(--font-kalam), "Comic Sans MS", cursive;
+}
+
+html {
+  background: var(--color-wall);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  overflow-x: hidden;
+  /* pegboard: a hole every 22 px on a charcoal wall */
+  background-color: var(--color-wall);
+  background-image: radial-gradient(circle at 11px 11px, rgba(0, 0, 0, 0.55) 0 2.6px, transparent 3px), linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(0, 0, 0, 0.12));
+  background-size: 22px 22px, 100% 100%;
+  min-height: 100vh;
+}
+
+.head {
+  font-family: var(--font-head);
+  letter-spacing: 0.01em;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.hand {
+  font-family: var(--font-hand);
+  color: var(--color-carbon);
+  line-height: 1.35;
+}
+.link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* The card stock itself: buff, a little uneven, with two oil rings and a thumb smudge. */
+.sheet {
+  position: relative;
+  background-color: var(--color-card);
+  background-image:
+    radial-gradient(ellipse 120px 90px at 88% 12%, rgba(70, 48, 18, 0.1), rgba(70, 48, 18, 0.05) 60%, transparent 62%),
+    radial-gradient(ellipse 70px 62px at 88% 12%, transparent 80%, rgba(70, 48, 18, 0.12) 82%, transparent 90%),
+    radial-gradient(ellipse 160px 60px at 8% 96%, rgba(40, 30, 20, 0.09), transparent 70%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 40%, rgba(120, 90, 40, 0.06));
+  border: 1px solid #bfa77a;
+  border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 10px 24px -12px rgba(0, 0, 0, 0.7), 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+.sheet-plain {
+  background: var(--color-card-2);
+  border: 1px solid var(--color-rule);
+  border-radius: 3px;
+}
+
+/* A pin at the top of a card, as if it hangs on the pegboard hook. */
+.hook::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d6dde0, #6d777c 60%, #3a4145);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* The printed form: ruled lines, column heads in small caps. */
+.ruled {
+  background-image: repeating-linear-gradient(180deg, transparent 0 39px, rgba(42, 74, 156, 0.16) 39px 40px);
+}
+.form-label {
+  font-family: var(--font-head);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+
+/* Rubber stamps: double border, slightly turned, ink that did not take everywhere. */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-head);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: 5px 9px 4px;
+  border: 3px double currentColor;
+  border-radius: 4px;
+  transform: rotate(-5deg);
+  opacity: 0.9;
+  white-space: nowrap;
+  mix-blend-mode: multiply;
+  -webkit-mask-image: radial-gradient(circle at 20% 30%, #000 0 55%, rgba(0, 0, 0, 0.75) 70%, #000 100%), repeating-linear-gradient(115deg, #000 0 3px, rgba(0, 0, 0, 0.82) 3px 4px);
+  -webkit-mask-composite: source-in;
+  mask-image: radial-gradient(circle at 20% 30%, #000 0 55%, rgba(0, 0, 0, 0.75) 70%, #000 100%), repeating-linear-gradient(115deg, #000 0 3px, rgba(0, 0, 0, 0.82) 3px 4px);
+  mask-composite: intersect;
+}
+.stamp-covered {
+  color: var(--color-ok);
+}
+.stamp-not {
+  color: var(--color-no);
+  transform: rotate(4deg);
+}
+.stamp-unclear {
+  color: var(--color-amber);
+  transform: rotate(-2deg);
+}
+.stamp-waiting {
+  color: var(--color-ink-3);
+  border-style: dashed;
+  border-width: 2px;
+  opacity: 0.7;
+}
+@keyframes thump {
+  0% {
+    transform: scale(1.6) rotate(-12deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.94) rotate(-5deg);
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.9;
+  }
+}
+.stamp-new {
+  animation: thump 0.32s ease-out both;
+}
+
+/* The time-clock strip: a narrow card with punched holes down the left edge. */
+.clock-strip {
+  background-color: #efe6cf;
+  background-image: radial-gradient(circle at 12px 50%, var(--color-wall) 0 4.5px, transparent 5px);
+  background-size: 24px 26px;
+  background-repeat: repeat-y;
+  border: 1px solid #bfa77a;
+  border-radius: 2px;
+  padding-left: 30px;
+  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.7);
+}
+.punch {
+  font-family: var(--font-mono);
+  color: var(--color-punch);
+}
+
+/* The lever: safety orange, square, a heavy edge that pushes in. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 18px;
+  font-family: var(--font-head);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1b130c;
+  background: var(--color-safety);
+  border: 2px solid #1b130c;
+  border-bottom-width: 5px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.05s;
+}
+.btn:hover {
+  background: #f07a33;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+  border-bottom-width: 3px;
+}
+.btn:focus-visible,
+.chip:focus-visible {
+  outline: 3px solid var(--color-carbon);
+  outline-offset: 2px;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-ok {
+  background: #3c9a4c;
+  color: #0d1f10;
+}
+.btn-ok:hover {
+  background: #46ad57;
+}
+.btn-plain {
+  background: var(--color-card-2);
+  color: var(--color-ink);
+}
+.btn-plain:hover {
+  background: #fff7e6;
+}
+.btn-sm {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 14.5px;
+  border-bottom-width: 4px;
+}
+.btn-block {
+  width: 100%;
+}
+
+/* A "next step" tag: a manila label on a string, for the moves the demo garage makes. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 14px 6px 24px;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 15.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  background: radial-gradient(circle at 11px 50%, var(--color-card) 0 3.5px, #7d705c 4px 5px, transparent 5.5px), #e3c88a;
+  border: 1.5px solid #8b7448;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
+  cursor: pointer;
+}
+.chip:hover {
+  background-color: #ecd49c;
+}
+.chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.field {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  background: var(--color-card-2);
+  border: 1.5px solid var(--color-ink-3);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+}
+
+/* the spanner turning while something is on its way */
+@keyframes turn {
+  from {
+    transform: rotate(-25deg);
+  }
+  to {
+    transform: rotate(25deg);
+  }
+}
+.wrench-busy {
+  animation: turn 0.9s ease-in-out infinite alternate;
+  transform-origin: 70% 30%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrench-busy,
+  .stamp-new {
+    animation: none;
+  }
+}
