@@ -1,4 +1,5 @@
-# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+# v0.4.0
+# { "Depends": "py-genlayer:kzybg95x1gn21dw72m7hyg0maaap04n4nx55j9yt6fkdqxtz6bz0" }
 
 """Garage: a repair quote held in escrow, and an invoice judged line by line.
 
@@ -45,7 +46,9 @@ import json
 import typing
 from dataclasses import dataclass
 
-from genlayer import *
+import genlayer as gl
+from genlayer.types import *
+from genlayer.storage import TreeMap
 
 
 ERROR_EXPECTED = "[EXPECTED]"     # a rule of this contract: deterministic on every node
@@ -114,13 +117,9 @@ WHY = {
 }
 
 
-@gl.evm.contract_interface
-class _Payee:
-    class View:
-        pass
-
-    class Write:
-        pass
+def _transfer(to: typing.Any, amount: int) -> None:
+    """Send value to an address. The only place value leaves the contract."""
+    gl.chain.Account(Address(_hex(to))).emit_transfer(amount)
 
 
 def _fail(message: str) -> typing.NoReturn:
@@ -273,7 +272,7 @@ def _instant_seconds(iso: str) -> int:
 def _now() -> int:
     """The message clock in seconds, or -1. Every node reads the same instant for one transaction."""
     try:
-        raw = gl.message_raw
+        raw = gl.message.raw
         value = raw.get("datetime") if hasattr(raw, "get") else None
         return _instant_seconds(str(value)) if value else -1
     except Exception:
@@ -478,14 +477,14 @@ def _coverage_round(pairs: typing.List[typing.Any]) -> typing.Tuple[str, str]:
     def validator_fn(leaders_res: gl.vm.Result) -> bool:
         return _agrees(leaders_res, leader_fn)
 
-    agreed = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+    agreed = gl.vm.run_nondet(leader_fn, validator_fn)
     mask = _clean_mask(agreed.get("mask", "") if isinstance(agreed, dict) else "", count)
     return mask, _fingerprint(pairs)
 
 
 # ----------------------------------------------------------------- storage
 
-@allow_storage
+@gl.storage.allow
 @dataclass
 class Shop:
     """One registered garage, in scalars only. Its free bond is in bond_rows."""
@@ -497,7 +496,7 @@ class Shop:
     penalties: u256
 
 
-@allow_storage
+@gl.storage.allow
 @dataclass
 class Quote:
     garage: Address
@@ -530,7 +529,7 @@ class Quote:
     closed_at: u64
 
 
-@allow_storage
+@gl.storage.allow
 @dataclass
 class Line:
     """One approved line (or an extra asked for), keyed "Q1:3"."""
@@ -544,7 +543,7 @@ class Line:
     approved_at: u64
 
 
-@allow_storage
+@gl.storage.allow
 @dataclass
 class Billed:
     """One invoice line, keyed "Q1:i", and its one re-bill if it was unclear."""
@@ -563,7 +562,7 @@ class Billed:
     rebill_penalty: u256
 
 
-class Garage(gl.Contract):
+class Garage(gl.contract.Contract):
     shop_rows: TreeMap[str, Shop]              # "<address>"     -> one registered garage
     bond_rows: TreeMap[str, u256]              # "<address>"     -> that garage's free bond
     quote_rows: TreeMap[str, Quote]            # "Q1"            -> one quote
@@ -589,22 +588,22 @@ class Garage(gl.Contract):
     refunded_total: u256
 
     def __init__(self) -> None:
-        self.shop_count = u32(0)
-        self.quote_count = u32(0)
-        self.invoiced_count = u32(0)
-        self.rebill_count = u32(0)
-        self.settled_count = u32(0)
-        self.reclaimed_count = u32(0)
-        self.refund_count = u32(0)
-        self.covered_count = u32(0)
-        self.not_covered_count = u32(0)
-        self.unclear_count = u32(0)
-        self.bonds_free = u256(0)
-        self.bonds_locked = u256(0)
-        self.escrow_held = u256(0)
-        self.paid_total = u256(0)
-        self.penalties_total = u256(0)
-        self.refunded_total = u256(0)
+        self.shop_count = 0
+        self.quote_count = 0
+        self.invoiced_count = 0
+        self.rebill_count = 0
+        self.settled_count = 0
+        self.reclaimed_count = 0
+        self.refund_count = 0
+        self.covered_count = 0
+        self.not_covered_count = 0
+        self.unclear_count = 0
+        self.bonds_free = 0
+        self.bonds_locked = 0
+        self.escrow_held = 0
+        self.paid_total = 0
+        self.penalties_total = 0
+        self.refunded_total = 0
 
     # ---------------------------------------------------------------- garage
 
@@ -618,9 +617,8 @@ class Garage(gl.Contract):
         if problem:
             _fail(problem)
         now = _clock()
-        self.shop_rows[me] = Shop(name=name.strip(), registered_at=u64(now), quotes=u32(0), paid=u256(0),
-                                  penalties=u256(0))
-        self.shop_count = u32(int(self.shop_count) + 1)
+        self.shop_rows[me] = Shop(name=name.strip(), registered_at=now, quotes=0, paid=0, penalties=0)
+        self.shop_count = int(self.shop_count) + 1
         return json.dumps({"ok": True, "garage": me, "name": name.strip(), "min_standing": str(MIN_STANDING)})
 
     @gl.public.write.payable
@@ -637,8 +635,8 @@ class Garage(gl.Contract):
         if problem:
             return self._refuse(sender, value, problem)
         held = self._bond(me) + value
-        self.bond_rows[me] = u256(held)
-        self.bonds_free = u256(int(self.bonds_free) + value)
+        self.bond_rows[me] = held
+        self.bonds_free = int(self.bonds_free) + value
         return json.dumps({"ok": True, "deposited": str(value), "bond": str(held)})
 
     @gl.public.write
@@ -652,10 +650,10 @@ class Garage(gl.Contract):
         amount = _whole(amount_atto)
         if amount < 1 or amount > held:
             _fail("withdraw 1 to " + str(held) + " atto, the free bond this address holds, written in digits")
-        self.bond_rows[me] = u256(held - amount)
-        self.bonds_free = u256(int(self.bonds_free) - amount)
+        self.bond_rows[me] = held - amount
+        self.bonds_free = int(self.bonds_free) - amount
         # The money moves after everything above is written.
-        _Payee(sender).emit_transfer(value=u256(amount))
+        _transfer(sender, amount)
         return json.dumps({"ok": True, "returned": str(amount), "bond": str(held - amount)})
 
     # ----------------------------------------------------------------- quote
@@ -704,23 +702,23 @@ class Garage(gl.Contract):
         if problem:
             _fail(problem)
         now = _clock()
-        self.quote_count = u32(int(self.quote_count) + 1)
+        self.quote_count = int(self.quote_count) + 1
         qid = "Q" + str(int(self.quote_count))
         self.quote_rows[qid] = Quote(
             garage=sender, customer=Address(who), title=title.strip(), car=car.strip(), status=QUOTED,
-            lines=u32(len(rows)), extras=u32(0), total=u256(total), escrow=u256(0), held=u256(0), paid=u256(0),
-            penalties=u256(0), refunded=u256(0), lock=u256(0), job_seconds=u64(job), created_at=u64(now),
-            accept_by=u64(now + ACCEPT_SECONDS), accepted_at=u64(0), invoice_by=u64(0), invoiced_at=u64(0),
-            rebill_by=u64(0), billed=u32(0), mask="", fingerprint="", rebilled="", rebill_mask="",
-            rebill_fingerprint="", closed_at=u64(0),
+            lines=len(rows), extras=0, total=total, escrow=0, held=0, paid=0,
+            penalties=0, refunded=0, lock=0, job_seconds=job, created_at=now,
+            accept_by=now + ACCEPT_SECONDS, accepted_at=0, invoice_by=0, invoiced_at=0,
+            rebill_by=0, billed=0, mask="", fingerprint="", rebilled="", rebill_mask="",
+            rebill_fingerprint="", closed_at=0,
         )
         made = min(len(rows), MAX_QUOTE_LINES)
         for k in range(made):
             self.line_rows[qid + ":" + str(k + 1)] = Line(
-                kind=QUOTE_LINE, text=rows[k][0], price=u256(rows[k][1]), status=PENDING, paid=u256(0),
-                asked_at=u64(now), approved_at=u64(0))
+                kind=QUOTE_LINE, text=rows[k][0], price=rows[k][1], status=PENDING, paid=0,
+                asked_at=now, approved_at=0)
         shop = self.shop_rows[me]
-        shop.quotes = u32(int(shop.quotes) + 1)
+        shop.quotes = int(shop.quotes) + 1
         self._index(me, qid)
         self._index(who, qid)
         return json.dumps({"ok": True, "quote": qid, "customer": who, "total": str(total), "lines": len(rows),
@@ -756,11 +754,11 @@ class Garage(gl.Contract):
             return self._refuse(sender, value, problem)
         q = self.quote_rows[qid]
         q.status = WORKING
-        q.accepted_at = u64(now)
-        q.invoice_by = u64(now + int(q.job_seconds))
-        q.escrow = u256(value)
-        q.held = u256(value)
-        self.escrow_held = u256(int(self.escrow_held) + value)
+        q.accepted_at = now
+        q.invoice_by = now + int(q.job_seconds)
+        q.escrow = value
+        q.held = value
+        self.escrow_held = int(self.escrow_held) + value
         return json.dumps({"ok": True, "quote": qid, "status": WORKING, "held": str(value),
                            "invoice_by": now + int(q.job_seconds)})
 
@@ -781,10 +779,10 @@ class Garage(gl.Contract):
         line, amount, why = self._priced({"text": text, "price": price}, int(q.lines) + int(q.extras) + 1, "extra")
         if why:
             _fail(why)
-        q.extras = u32(int(q.extras) + 1)
+        q.extras = int(q.extras) + 1
         number = int(q.lines) + int(q.extras)
-        self.line_rows[qid + ":" + str(number)] = Line(kind=EXTRA_LINE, text=line, price=u256(amount), status=PENDING,
-                                                       paid=u256(0), asked_at=u64(now), approved_at=u64(0))
+        self.line_rows[qid + ":" + str(number)] = Line(kind=EXTRA_LINE, text=line, price=amount, status=PENDING,
+                                                       paid=0, asked_at=now, approved_at=0)
         return json.dumps({"ok": True, "quote": qid, "line": number, "price": str(amount), "status": PENDING})
 
     @gl.public.write.payable
@@ -820,10 +818,10 @@ class Garage(gl.Contract):
         q = self.quote_rows[qid]
         extra = self.line_rows[key]
         extra.status = APPROVED
-        extra.approved_at = u64(now)
-        q.escrow = u256(int(q.escrow) + value)
-        q.held = u256(int(q.held) + value)
-        self.escrow_held = u256(int(self.escrow_held) + value)
+        extra.approved_at = now
+        q.escrow = int(q.escrow) + value
+        q.held = int(q.held) + value
+        self.escrow_held = int(self.escrow_held) + value
         return json.dumps({"ok": True, "quote": qid, "line": number, "status": APPROVED, "held": str(int(q.held))})
 
     # --------------------------------------------------------------- invoice
@@ -887,20 +885,20 @@ class Garage(gl.Contract):
             penalty += fine
             kept += wait
             self.billed_rows[qid + ":" + str(k + 1)] = Billed(
-                bills=u32(bills), text=text, price=u256(price), wording=_wording(text), verdict=VERDICT[mask[k]],
-                paid=u256(got), penalty=u256(fine), rebill_text="", rebill_price=u256(0), rebill_verdict="",
-                rebill_paid=u256(0), rebill_penalty=u256(0))
-        self.bond_rows[me] = u256(free - penalty - kept)
-        self.bonds_free = u256(int(self.bonds_free) - penalty - kept)
-        self.bonds_locked = u256(int(self.bonds_locked) + kept)
-        q.lock = u256(kept)
-        q.billed = u32(count)
+                bills=bills, text=text, price=price, wording=_wording(text), verdict=VERDICT[mask[k]],
+                paid=got, penalty=fine, rebill_text="", rebill_price=0, rebill_verdict="",
+                rebill_paid=0, rebill_penalty=0)
+        self.bond_rows[me] = free - penalty - kept
+        self.bonds_free = int(self.bonds_free) - penalty - kept
+        self.bonds_locked = int(self.bonds_locked) + kept
+        q.lock = kept
+        q.billed = count
         q.mask = mask
         q.fingerprint = fingerprint
-        q.invoiced_at = u64(now)
+        q.invoiced_at = now
         q.status = INVOICED
-        q.rebill_by = u64(now + REBILL_SECONDS)
-        self.invoiced_count = u32(int(self.invoiced_count) + 1)
+        q.rebill_by = now + REBILL_SECONDS
+        self.invoiced_count = int(self.invoiced_count) + 1
         closing = U not in mask
         if closing:
             self._close(me, q, now)
@@ -970,17 +968,17 @@ class Garage(gl.Contract):
             penalty += fine
             b = self.billed_rows[qid + ":" + str(number)]
             b.rebill_text = text
-            b.rebill_price = u256(price)
+            b.rebill_price = price
             b.rebill_verdict = VERDICT[mask[k]]
-            b.rebill_paid = u256(got)
-            b.rebill_penalty = u256(fine)
+            b.rebill_paid = got
+            b.rebill_penalty = fine
         # A penalty on a re-billed line comes out of the bond locked behind it: the price never rose, so it fits.
-        q.lock = u256(int(q.lock) - penalty)
-        self.bonds_locked = u256(int(self.bonds_locked) - penalty)
+        q.lock = int(q.lock) - penalty
+        self.bonds_locked = int(self.bonds_locked) - penalty
         q.rebilled = named
         q.rebill_mask = mask
         q.rebill_fingerprint = fingerprint
-        self.rebill_count = u32(int(self.rebill_count) + 1)
+        self.rebill_count = int(self.rebill_count) + 1
         self._close(me, q, now)
         return self._pay(qid, q, paid, penalty, True, mask)
 
@@ -1017,16 +1015,16 @@ class Garage(gl.Contract):
             _fail("the garage may invoice " + qid + " for another " + str(int(q.invoice_by) - now) + " seconds; the "
                   "escrow comes back only once that deadline has passed")
         amount = int(q.held)
-        q.held = u256(0)
-        q.refunded = u256(int(q.refunded) + amount)
+        q.held = 0
+        q.refunded = int(q.refunded) + amount
         q.status = RECLAIMED
-        q.closed_at = u64(now)
-        self.escrow_held = u256(int(self.escrow_held) - amount)
-        self.refunded_total = u256(int(self.refunded_total) + amount)
-        self.reclaimed_count = u32(int(self.reclaimed_count) + 1)
+        q.closed_at = now
+        self.escrow_held = int(self.escrow_held) - amount
+        self.refunded_total = int(self.refunded_total) + amount
+        self.reclaimed_count = int(self.reclaimed_count) + 1
         # The money moves after everything above is written: one transfer, to the customer.
         if amount > 0:
-            _Payee(q.customer).emit_transfer(value=u256(amount))
+            _transfer(q.customer, amount)
         return json.dumps({"ok": True, "quote": qid, "status": RECLAIMED, "returned": str(amount)})
 
     # ----------------------------------------------------------------- views
@@ -1237,7 +1235,7 @@ class Garage(gl.Contract):
 
     def _index(self, who: str, qid: str) -> None:
         n = self._party_count(who) + 1
-        self.party_count_rows[who] = u32(n)
+        self.party_count_rows[who] = n
         self.party_rows[who + ":" + str(n)] = qid
 
     def _quote_row(self, qid: str, q: typing.Any) -> typing.Dict[str, typing.Any]:
@@ -1275,25 +1273,25 @@ class Garage(gl.Contract):
         if letter == C:
             room = max(int(line.price) - int(line.paid), 0)
             got = min(price, room)
-            line.paid = u256(int(line.paid) + got)
-            self.covered_count = u32(int(self.covered_count) + 1)
+            line.paid = int(line.paid) + got
+            self.covered_count = int(self.covered_count) + 1
             return got, 0, 0
         if letter == N:
-            self.not_covered_count = u32(int(self.not_covered_count) + 1)
+            self.not_covered_count = int(self.not_covered_count) + 1
             return 0, base, 0
-        self.unclear_count = u32(int(self.unclear_count) + 1)
+        self.unclear_count = int(self.unclear_count) + 1
         return 0, 0, base
 
     def _close(self, garage: str, q: typing.Any, now: int) -> None:
         """Settle a quote: the locked bond back to the garage's free bond. _pay() then returns what is held."""
         lock = int(q.lock)
-        self.bond_rows[garage] = u256(self._bond(garage) + lock)
-        self.bonds_free = u256(int(self.bonds_free) + lock)
-        self.bonds_locked = u256(int(self.bonds_locked) - lock)
-        q.lock = u256(0)
+        self.bond_rows[garage] = self._bond(garage) + lock
+        self.bonds_free = int(self.bonds_free) + lock
+        self.bonds_locked = int(self.bonds_locked) - lock
+        q.lock = 0
         q.status = SETTLED
-        q.closed_at = u64(now)
-        self.settled_count = u32(int(self.settled_count) + 1)
+        q.closed_at = now
+        self.settled_count = int(self.settled_count) + 1
 
     def _pay(self, qid: str, q: typing.Any, paid: int, penalty: int, closing: bool, mask: str) -> str:
         """Write the money, then move it: at most two transfers, the garage's and the customer's.
@@ -1301,29 +1299,29 @@ class Garage(gl.Contract):
         Closing, everything still held after the garage's pay goes back to the customer.
         """
         refund = int(q.held) - paid if closing else 0
-        q.held = u256(int(q.held) - paid - refund)
-        q.paid = u256(int(q.paid) + paid)
-        q.penalties = u256(int(q.penalties) + penalty)
-        q.refunded = u256(int(q.refunded) + refund)
-        self.escrow_held = u256(int(self.escrow_held) - paid - refund)
-        self.paid_total = u256(int(self.paid_total) + paid)
-        self.penalties_total = u256(int(self.penalties_total) + penalty)
-        self.refunded_total = u256(int(self.refunded_total) + refund)
+        q.held = int(q.held) - paid - refund
+        q.paid = int(q.paid) + paid
+        q.penalties = int(q.penalties) + penalty
+        q.refunded = int(q.refunded) + refund
+        self.escrow_held = int(self.escrow_held) - paid - refund
+        self.paid_total = int(self.paid_total) + paid
+        self.penalties_total = int(self.penalties_total) + penalty
+        self.refunded_total = int(self.refunded_total) + refund
         shop = self.shop_rows[_low(q.garage)]
-        shop.paid = u256(int(shop.paid) + paid)
-        shop.penalties = u256(int(shop.penalties) + penalty)
+        shop.paid = int(shop.paid) + paid
+        shop.penalties = int(shop.penalties) + penalty
         # The money moves after everything above is written: at most two transfers.
         if paid > 0:
-            _Payee(q.garage).emit_transfer(value=u256(paid))
+            _transfer(q.garage, paid)
         if penalty + refund > 0:
-            _Payee(q.customer).emit_transfer(value=u256(penalty + refund))
+            _transfer(q.customer, penalty + refund)
         return json.dumps({"ok": True, "quote": qid, "status": str(q.status), "mask": mask, "paid": str(paid),
                            "penalty": str(penalty), "refunded": str(refund), "held": str(int(q.held)),
                            "lock": str(int(q.lock))})
 
     def _refuse(self, sender: typing.Any, value: int, reason: str) -> str:
         """Return everything that was sent and say why. Never raises."""
-        self.refund_count = u32(int(self.refund_count) + 1)
+        self.refund_count = int(self.refund_count) + 1
         if value > 0:
-            _Payee(sender).emit_transfer(value=u256(value))
+            _transfer(sender, value)
         return json.dumps({"ok": False, "reason": reason, "returned": str(value)})

@@ -17,10 +17,11 @@ import { getAddress, type Address } from "viem";
 
 import { balanceOf, contractAddress, isMock, readGarage, readQuote, readQuotesOfWindow, studio } from "./chain";
 import { cleanKey, keyProblem } from "./demo-key";
+import { quoteFees } from "./fees";
 import { DEMO_LIMITS, createLimiter } from "./demo-limit";
 import { DEMO_EXTRA, DEMO_NAME, DEMO_NEEDED, demoTurn, invoiceJson, openDemoQuote, quoteArgs, rebillJson } from "./demo-script";
 import { big } from "./format";
-import { FINAL_STATUSES, rpc, sleep, statusName, type RawTx } from "./rpc";
+import { decodeTx, isDone, rpc, sleep, type RawTx } from "./rpc";
 import type { DemoMove, DemoStatus, Quote } from "./types";
 
 type Account = ReturnType<typeof createAccount>;
@@ -99,7 +100,7 @@ async function stillMoving(slot: string): Promise<boolean> {
   }
   try {
     const tx = await rpc<RawTx | null>("eth_getTransactionByHash", [last.hash]);
-    if (tx && FINAL_STATUSES.has(statusName(tx.status))) {
+    if (tx && isDone(decodeTx(tx))) {
       inflight.delete(slot);
       return false;
     }
@@ -126,7 +127,9 @@ async function sign(slot: string, functionName: string, args: (string | number)[
   try {
     const hash = await serial(async () => {
       const client = createClient({ chain: studio, account: a });
-      return client.writeContract({ address: contractAddress() as Address, functionName, args, value: 0n });
+      // Studio v0.123: every write carries the fees quoted for it (lib/fees.ts), paid from the bot's balance.
+      const fees = await quoteFees(client);
+      return client.writeContract({ address: contractAddress() as Address, functionName, args, value: 0n, fees });
     });
     if (typeof hash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new Error("no hash");
     inflight.set(slot, { hash, at: Date.now() });

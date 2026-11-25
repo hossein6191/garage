@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 
 import { JOB_STATES, ROLES, demoGuide, jobGuide, jobState, roleOf, sendingGuide, signGuide } from "../../lib/guide.ts";
 import { mapQuote } from "../../lib/parse.ts";
+import { decodeTx, isDone } from "../../lib/rpc.ts";
 import { BOT, ME, row } from "./fixture.mjs";
 
 const pending = row().approved.map((a) => (a.kind === "extra" ? { ...a, status: "pending" } : a));
@@ -72,4 +73,19 @@ test("roles", () => {
   assert.equal(roleOf(q, ME.toUpperCase().replace("0X", "0x")), "customer");
   assert.equal(roleOf(q, BOT), "garage");
   assert.equal(roleOf(q, ""), "visitor");
+});
+
+test("where the wallet asks for a signature, the small network fee is named, and a write is done only with its execution result", () => {
+  for (const s of [signGuide("accept", 220n * 10n ** 15n), signGuide("invoice")]) {
+    assert.match(s.money, /small network fee, a deposit of about 0\.1 GEN/);
+    assert.match(s.money, /comes back once it is final/);
+  }
+  assert.match(signGuide("accept", 220n * 10n ** 15n).need, /plus the small network fee/);
+  const votes = { "0xa": "agree", "0xb": "agree", "0xc": "agree" };
+  assert.equal(isDone(decodeTx({ status: "ACCEPTED", consensus_data: { votes } })), false);
+  assert.equal(isDone(decodeTx({ status: "FINALIZED", consensus_data: { votes } })), false);
+  const done = decodeTx({ status: "FINALIZED", txExecutionResultName: "FINISHED_WITH_ERROR", consensus_data: { votes } });
+  assert.equal(isDone(done), true);
+  assert.equal(done.exec, "ERROR");
+  assert.equal(decodeTx({ status: "FINALIZED", txExecutionResultName: "FINISHED_WITH_RETURN", consensus_data: { votes } }).exec, "SUCCESS");
 });

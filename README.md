@@ -161,9 +161,9 @@ settled; nobody waits on anybody forever.
 ```sh
 pip install -r requirements-dev.txt
 pytest tests/ -q                       # offline, no network, under a second
-genvm-lint check contracts/garage.py   # lint
+genvm-lint check contracts/garage.py   # lint; its E014 on the @gl.storage.allow dataclasses is a known false positive on v0.4
 python tools/mutate.py                 # regenerates tests/MUTATIONS.md; exit 1 if a mutant escapes
-npm ci && node tests/on_chain/smoke.mjs   # the on-chain walk, against Studio
+npm ci && node tests/on_chain/smoke.mjs   # the on-chain walk, against Studio, with genlayer-js 2.0.0 and fees
 ```
 
 The smoke walks the demonstration: a quote of three lines (front brake pads
@@ -175,37 +175,46 @@ same words re-billed and a stranger settling.
 
 ## Network
 
-GenLayer Studio, chain 61999. The runner is pinned in the first line of the
-contract.
+GenLayer Studio (Studio v0.123), chain 61999. The contract is written for
+GenVM v0.4; the runner is pinned in its first two lines. Studio charges a fee
+on every deploy and write: the smoke, the site and the demo garage all quote it
+with genlayer-js 2.0's `estimateTransactionFees()` and pass it with the call,
+and treat a transaction as done only when it is FINALIZED and carries its
+execution result.
 
 ## Evidence
 
-Run on 19 Nov 2026 on GenLayer Studio (chain 61999) by `tests/on_chain/smoke.mjs`, from generated accounts funded from the
-Studio faucet, none of them anybody's wallet: GARAGE, CUSTOMER and STRANGER are fresh accounts funded for this run.. **26 passed, 0 failed**; transactions: 16 in 16 steps; sent a second time: none.
-The whole log is `tests/on_chain/smoke-run.log`. A three-line brake quote plus one approved extra is invoiced in six lines: four in different words read covered, the fluid billed above its approved price is paid at the approved price, an unquoted cabin filter reads not covered and costs the garage 20% from its bond, and a vague sundries line reads unclear and is refunded.
+Garage moved to **GenVM v0.4** (runner `py-genlayer:kzybg95x…`) and **Studio v0.123**, where every deploy and write pays a fee. This evidence replaces the earlier run, made on GenVM v0.2 before fees existed; that register is no longer used.
 
-- `deploy` deployed at [`0x282b607E92394E74Babfc5afb602b89Ca3fda98D`](https://explorer-studio.genlayer.com/address/0x282b607E92394E74Babfc5afb602b89Ca3fda98D)
+Run on 26 Nov 2026 on GenLayer Studio (chain 61999) by `tests/on_chain/smoke.mjs` with genlayer-js 2.0.0, from three accounts generated and funded from the Studio faucet for this run, none of them anybody's wallet: GARAGE, CUSTOMER and STRANGER. **28 passed, 0 failed**; transactions: 16 in 16 steps; sent a second time: none. The whole log is `tests/on_chain/smoke-run.log`.
 
-- the code deployed at 0x282b607E92394E74Babfc5afb602b89Ca3fda98D is byte for byte contracts/garage.py: 66218 bytes, sha256 f9cf74268c2a1d60d35b76c338143bb268b78574e31342fde811b6fd1e0f362b
+Every deploy and write carried the fees quoted by `estimateTransactionFees()` (a deposit of about 0.1 GEN; the unused part is refunded at finalization), and every transaction was checked for both its status (FINALIZED) and its execution result (FINISHED_WITH_RETURN, or FINISHED_WITH_ERROR for a refusal). What each transaction cost its sender was read from its own fee accounting (paid less refunded), and every balance was checked to the atto with that fee taken out.
 
-| step | by | transactions | votes |
-|---|---|---|---|
-| Garage is deployed and holds nothing yet | GARAGE | [0x39246f9b…](https://explorer-studio.genlayer.com/tx/0x39246f9b607a17d4e75af1f89b77903b99840d5f7b2b9aa27f201efbff1c193d) | 3 agree, 0 disagree, 2 idle |
-| GARAGE registers as Northgate Motors; no value, no model | GARAGE | [0xf456b356…](https://explorer-studio.genlayer.com/tx/0xf456b356eeb66e0d71c3a6cbfb0c90ad581155b3dbc4a57a9625c74f71438cdc) | 3 agree, 0 disagree, 2 idle |
-| GARAGE deposits a 0.2 GEN standing bond; no model runs | GARAGE | [0x558e4578…](https://explorer-studio.genlayer.com/tx/0x558e4578ac5579dbca96594a5179c4d361c1a925bc6cbde21f2dac0307a6590f) | 4 agree, 0 disagree, 1 idle |
-| GARAGE quotes CUSTOMER three lines, 0.22 GEN in all | GARAGE | [0xcb1448a4…](https://explorer-studio.genlayer.com/tx/0xcb1448a42b35eef955b70bf144acbeb9c6ae3da65bf20c6d0d3469a683fc3cf0) | 4 agree, 0 disagree, 1 idle |
-| GARAGE invoices Q1 before it is accepted: refused, no model runs | GARAGE | [0x4a9f9620…](https://explorer-studio.genlayer.com/tx/0x4a9f9620aa3b94fd320a9c3b2fdc2f7420a3894a05723e1cf58b38b807328058) | 3 agree, 0 disagree, 2 idle |
-| CUSTOMER accepts paying 0.2 GEN, not the total: refused, and every atto comes back in the same transaction | CUSTOMER | [0x742b50a9…](https://explorer-studio.genlayer.com/tx/0x742b50a9b5114cfd55ef6e88bf9d6d095bcd392a605f6e073c2034d97621d037) | 3 agree, 0 disagree, 2 idle |
-| CUSTOMER accepts paying exactly 0.22 GEN, held in escrow | CUSTOMER | [0xf235da76…](https://explorer-studio.genlayer.com/tx/0xf235da7632304531cdf004a9bf4dc47de887f7d76a3d38f0ebedd26ad4740b5d) | 3 agree, 0 disagree, 2 idle |
-| GARAGE asks for front wiper blades, 0.015 GEN, as line 4 | GARAGE | [0x4bd59908…](https://explorer-studio.genlayer.com/tx/0x4bd59908d91f7d35a01d854934d54d0b6f25234e66a3bd2a341ba38b18497773) | 3 agree, 0 disagree, 2 idle |
-| CUSTOMER approves line 4 by paying 0.015 GEN | CUSTOMER | [0xb846235f…](https://explorer-studio.genlayer.com/tx/0xb846235f39dc7fdee6d2635a9006c38f04f93ca065d46920c093f1b2f72680de) | 3 agree, 0 disagree, 2 idle |
-| CUSTOMER tries to invoice the job: refused, only the garage that wrote it invoices | CUSTOMER | [0x76c83cfc…](https://explorer-studio.genlayer.com/tx/0x76c83cfc680f5a987e61894f4069b6db3edbc8d526416789c7da4fc02ea772bb) | 3 agree, 0 disagree, 2 idle |
-| GARAGE invoices six lines; one consensus round of two askings: covered x4, not covered, unclear | GARAGE | [0xdf0c1b42…](https://explorer-studio.genlayer.com/tx/0xdf0c1b4202744bb4b09f20dfb60c7d9ae92d0bad292170b97b79814f0b76ee2f) | 3 agree, 0 disagree, 2 idle |
-| GARAGE sends a second invoice: refused | GARAGE | [0x45ab89d1…](https://explorer-studio.genlayer.com/tx/0x45ab89d1035eec580215b506597d37cd0a6a943071cf37e93b6647dd08a93ad2) | 3 agree, 0 disagree, 2 idle |
-| GARAGE re-bills Sundries as SUNDRIES.: refused by fingerprint, the same words, no model runs | GARAGE | [0xf4c944f8…](https://explorer-studio.genlayer.com/tx/0xf4c944f87dded39ba59dd77c27fd6c64da637cb22dcd6143e948c52876d2578b) | 3 agree, 0 disagree, 2 idle |
-| STRANGER tries to settle the job: refused | STRANGER | [0x40959db2…](https://explorer-studio.genlayer.com/tx/0x40959db21397d7a1aeba79941fd498589027d9e0868caa336a1ced2c6af0ca1d) | 3 agree, 0 disagree, 2 idle |
-| GARAGE settles, waiving its re-bill: what was never paid out goes back to CUSTOMER | GARAGE | [0x61356ff8…](https://explorer-studio.genlayer.com/tx/0x61356ff8fa7c9b867fce0a86f6a19887f92ded2329480242f985a94db51bc0cc) | 4 agree, 0 disagree, 1 idle |
-| GARAGE withdraws its free bond, 0.2 GEN less the 0.005 penalty | GARAGE | [0xd60f3bbe…](https://explorer-studio.genlayer.com/tx/0xd60f3bbe3ffe60ab9f825c347e92446456b9c98ccd3615c6c9626bdcf5709698) | 3 agree, 0 disagree, 2 idle |
+A three-line brake quote plus one approved extra is invoiced in six lines: four in different words read covered, the fluid billed above its approved price is paid at the approved price, an unquoted cabin filter reads not covered and costs the garage 20% of its price from its bond, and a vague sundries line reads unclear and is refunded at settlement.
+
+- the register: [`0x2c565F93f564deeD044cBf15FcbE3d0DD36aaC0f`](https://explorer-studio.genlayer.com/address/0x2c565F93f564deeD044cBf15FcbE3d0DD36aaC0f)
+- the code deployed there is byte for byte `contracts/garage.py`: 65625 bytes, sha256 `2828c88a9fc98589d30ced6b52bb8283e716660f806667ac8eed88e7d6f5ad5a`
+- fees paid, in atto: GARAGE 1,011,058,000,033,877, CUSTOMER 362,192,000,013,410, STRANGER 78,628,000,002,823 (0.001452 GEN in all)
+- over the run GARAGE gained 0.21 GEN and CUSTOMER spent 0.21 GEN, exactly, once each account's own fees are taken out; STRANGER lost only its fee
+
+| step | by | transactions | result | votes | fee (atto) |
+|---|---|---|---|---|---|
+| GARAGE deploys contracts/garage.py with quoted fees: FINALIZED, FINISHED_WITH_RETURN | GARAGE | [0x780336bb…](https://explorer-studio.genlayer.com/tx/0x780336bb1b635f596bc2745f8d7ab15c95397e02c7007de8556acb5cd0ff4516) | FINISHED_WITH_RETURN | 3 agree, 0 disagree, 2 idle | 79144250002823 |
+| GARAGE registers as Northgate Motors; no value, no model | GARAGE | [0x7443ea85…](https://explorer-studio.genlayer.com/tx/0x7443ea85d946dafe6138c132c5270e8aea2d420b6c938ac2d41c44c8e754a396) | FINISHED_WITH_RETURN | 4 agree, 0 disagree, 1 idle | 78630000003529 |
+| GARAGE deposits a 0.2 GEN standing bond; no model runs | GARAGE | [0x27b7af86…](https://explorer-studio.genlayer.com/tx/0x27b7af86b5eb518770b50596452ab4233d4ce1bb01cded904743935936a509e8) | FINISHED_WITH_RETURN | 3 agree, 0 disagree, 2 idle | 78629750002823 |
+| GARAGE quotes CUSTOMER three lines, 0.22 GEN in all | GARAGE | [0x5e82ec7a…](https://explorer-studio.genlayer.com/tx/0x5e82ec7a269fe0baa6ec9b26f600985e545d6cae19a4aabb009b31e90fd43e70) | FINISHED_WITH_RETURN | 3 agree, 0 disagree, 2 idle | 78643000002823 |
+| GARAGE invoices Q1 before it is accepted: refused, no model runs | GARAGE | [0x95453ac4…](https://explorer-studio.genlayer.com/tx/0x95453ac4ccd0426d494253477b430f0fd4847623ab919971cee8072569fb95e0) | FINISHED_WITH_ERROR | 4 agree, 0 disagree, 1 idle | 78628000003529 |
+| CUSTOMER accepts paying 0.2 GEN, not the total: refused, and every atto comes back in the same transaction | CUSTOMER | [0x5eec5d3d…](https://explorer-studio.genlayer.com/tx/0x5eec5d3d727ff6e707213a10d971c45cef5d32412c3cec9e2db0a622107ba939) | FINISHED_WITH_RETURN | 3 agree, 0 disagree, 2 idle | 126304250002823 |
+| CUSTOMER accepts paying exactly 0.22 GEN, held in escrow | CUSTOMER | [0x0d207d7e…](https://explorer-studio.genlayer.com/tx/0x0d207d7e139023e68520cf9ac0a5563eed321ac1d6d571cf2746b8ee2fabc371) | FINISHED_WITH_RETURN | 3 agree, 0 disagree, 2 idle | 78630000002823 |
+| GARAGE asks for front wiper blades, 0.015 GEN, as line 4 | GARAGE | [0xdb5909ac…](https://explorer-studio.genlayer.com/tx/0xdb5909acf8561ebd5c1c88e46563116fb2f22d17f4aa5ae4084750bbfd890940) | FINISHED_WITH_RETURN | 5 agree, 0 disagree, 0 idle | 78631250004235 |
+| CUSTOMER approves line 4 by paying 0.015 GEN | CUSTOMER | [0x47265487…](https://explorer-studio.genlayer.com/tx/0x472654871660081df4b816bc1428710b32ca1b6947497d8e77591f40fd1e10fd) | FINISHED_WITH_RETURN | 4 agree, 0 disagree, 1 idle | 78629750003529 |
+| CUSTOMER tries to invoice the job: refused, only the garage that wrote it invoices | CUSTOMER | [0xf6a4e58e…](https://explorer-studio.genlayer.com/tx/0xf6a4e58e47ce92bba1307d0127952671703bb95cbc1c9faf5cfa3c56dfe8a434) | FINISHED_WITH_ERROR | 5 agree, 0 disagree, 0 idle | 78628000004235 |
+| GARAGE invoices six lines; one consensus round of two askings: covered x4, not covered, unclear | GARAGE | [0xa1993198…](https://explorer-studio.genlayer.com/tx/0xa19931985510c2b6eae870912d1d8f72c91bcc56f8d6c6a7d0333cd08e632a5d) | FINISHED_WITH_RETURN | 3 agree, 0 disagree, 2 idle | 128881750002823 |
+| GARAGE sends a second invoice: refused | GARAGE | [0xc9e7dfaf…](https://explorer-studio.genlayer.com/tx/0xc9e7dfafa9fe6bef95b8bd75b7cdc4b1653bb50c29d72b89acee8f2c8fdd7df7) | FINISHED_WITH_ERROR | 3 agree, 0 disagree, 2 idle | 78628000002823 |
+| GARAGE re-bills Sundries as SUNDRIES.: refused by fingerprint, the same words, no model runs | GARAGE | [0xd69c0986…](https://explorer-studio.genlayer.com/tx/0xd69c0986e9d211d9bf85e70f8becd377a0359470ee7af101b0428f5c1cfc4f50) | FINISHED_WITH_ERROR | 3 agree, 0 disagree, 2 idle | 78628000002823 |
+| STRANGER tries to settle the job: refused | STRANGER | [0x25a6d631…](https://explorer-studio.genlayer.com/tx/0x25a6d6313776c01a8b2a91f4b528a65b64bf4c7ffb6e4dfc643e4401be18b36b) | FINISHED_WITH_ERROR | 3 agree, 0 disagree, 2 idle | 78628000002823 |
+| GARAGE settles, waiving its re-bill: what was never paid out goes back to CUSTOMER | GARAGE | [0xe89ad019…](https://explorer-studio.genlayer.com/tx/0xe89ad0198ee85c6d9fa55c82f20b7e0ae9cd04c91340d61602f69d0b247f9f90) | FINISHED_WITH_RETURN | 3 agree, 0 disagree, 2 idle | 126309000002823 |
+| GARAGE withdraws its free bond, 0.2 GEN less the 0.005 penalty | GARAGE | [0x2aab6037…](https://explorer-studio.genlayer.com/tx/0x2aab6037a8724342440bafa7160f3420dfd8b8f1ac7470308fabd8cc41c29cf7) | FINISHED_WITH_RETURN | 3 agree, 0 disagree, 2 idle | 126305000002823 |
 
 ## Licence
 

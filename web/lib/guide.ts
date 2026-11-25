@@ -10,6 +10,7 @@
 // role. Nothing here may promise what contracts/garage.py does not do.
 
 import { big, gen, span, when } from "./format.ts";
+import { FEE_NOTE } from "./fees.ts";
 import { maskSummary } from "./verdict.ts";
 import type { DemoMove, Quote, WriteFn } from "./types.ts";
 
@@ -194,11 +195,16 @@ export function signGuide(fn: WriteFn, valueAtto: bigint = 0n): Guide {
     kicker: "Your wallet",
     now: `Your wallet is asking you to sign ${WHAT[fn]}.`,
     time: "Until you answer it.",
-    need: valueAtto > 0n ? `Check that the wallet shows ${gen(valueAtto)}, then sign. Rejecting sends nothing.` : "Sign or reject in the wallet. Rejecting sends nothing.",
+    need: valueAtto > 0n
+      ? `Check that the wallet shows ${gen(valueAtto)} plus the small network fee, then sign. Rejecting sends nothing.`
+      : "Sign or reject in the wallet. Rejecting sends nothing.",
     mustAct: true,
     leave: "Not yet: the request is open in your wallet.",
     canLeave: false,
-    money: valueAtto > 0n ? `${gen(valueAtto)} leaves your wallet only once you sign; a refused payment comes back in the same transaction.` : "Nothing moves by signing this.",
+    money:
+      (valueAtto > 0n
+        ? `${gen(valueAtto)} leaves your wallet only once you sign; a refused payment comes back in the same transaction. `
+        : "Nothing but the fee moves by signing this. ") + FEE_NOTE,
   };
 }
 

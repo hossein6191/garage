@@ -361,13 +361,13 @@ const STAGES = ["PENDING", "PROPOSING", "COMMITTING", "REVEALING", "ACCEPTED", "
 
 export async function txStatus(hash: string): Promise<TxStatus> {
   const t = state.txs.get(hash);
-  if (!t) return { status: "UNKNOWN", votes: { agree: 0, disagree: 0, idle: 0 }, applied: null, undetermined: false, exec: null, result: null, message: "" };
+  if (!t) return { status: "UNKNOWN", votes: { agree: 0, disagree: 0, idle: 0 }, applied: null, undetermined: false, exec: null, execution: "", result: null, message: "" };
   const step = t.judged ? 1300 : 600;
   const i = Math.min(STAGES.length - 1, Math.floor((Date.now() - t.at) / step));
   const status = STAGES[i];
   const voted = i >= 3;
   const message = t.error || JSON.stringify(t.result);
-  return { status, votes: voted ? { agree: 5, disagree: 0, idle: 0 } : { agree: 0, disagree: 0, idle: 0 }, applied: voted ? true : null, undetermined: false, exec: t.error ? "ERROR" : "SUCCESS", result: t.error ? null : t.result, message };
+  return { status, votes: voted ? { agree: 5, disagree: 0, idle: 0 } : { agree: 0, disagree: 0, idle: 0 }, applied: voted ? true : null, undetermined: false, exec: t.error ? "ERROR" : "SUCCESS", execution: status === "FINALIZED" ? (t.error ? "FINISHED_WITH_ERROR" : "FINISHED_WITH_RETURN") : "", result: t.error ? null : t.result, message };
 }
 
 export async function balanceOf(a: string): Promise<bigint> {

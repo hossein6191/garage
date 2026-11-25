@@ -11,13 +11,15 @@ import * as React from "react";
 import { IconExternal } from "@/components/icons";
 import { useWallet } from "@/components/wallet";
 import { failureOf, invalidateReads, isMock, movesMoney, txStatus, txUrl } from "@/lib/chain";
+import { isDone } from "@/lib/rpc";
 import { cx } from "@/lib/cx";
 import { STAGES } from "@/lib/rpc";
 import type { TxStatus, Votes } from "@/lib/types";
 
 const POLL_MS = isMock ? 500 : 3000;
 
-export const isFinal = (s: TxStatus) => s.undetermined || s.status === "FINALIZED" || s.status === "CANCELED" || s.status === "UNDETERMINED";
+/** Final means FINALIZED with its execution result (Studio v0.123 records both), or cancelled, or undetermined. */
+export const isFinal = (s: TxStatus) => isDone(s);
 
 /** Polls txStatus(hash) until it is final. The status is kept with its hash, so a new hash never shows an old result. */
 export function useTxStatus(hash: string | null): TxStatus | null {

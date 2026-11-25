@@ -3,7 +3,7 @@
 // DEMO_CONTRACT is the deployed Garage register the site reads when NEXT_PUBLIC_CONTRACT is unset. It is
 // filled in once the contract is deployed; while both are empty every page says the contract is not
 // deployed yet, and the whole site still works with NEXT_PUBLIC_MOCK=1.
-export const DEMO_CONTRACT: string = "0x282b607E92394E74Babfc5afb602b89Ca3fda98D";
+export const DEMO_CONTRACT: string = "0x2c565F93f564deeD044cBf15FcbE3d0DD36aaC0f";
 
 export const SITE_NAME = "Garage";
 export const SITE_TAGLINE = "You pay for the work you approved. The validators read every invoice line.";

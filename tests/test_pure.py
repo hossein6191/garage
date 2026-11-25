@@ -20,29 +20,23 @@ import re
 import sys
 import types
 
-if "genlayer" not in sys.modules:
-    stub = types.ModuleType("genlayer")
+# ------------------------------------------------------------------ the runtime stub (GenVM v0.4 API)
 
-    class _Any:
-        def __getattr__(self, n): return _Any()
-        def __call__(self, *a, **k): return _Any()
-        def __getitem__(self, n): return _Any()
+if "genlayer" not in sys.modules:
+    gl_mod = types.ModuleType("genlayer")
+    types_mod = types.ModuleType("genlayer.types")
+    storage_mod = types.ModuleType("genlayer.storage")
 
     class _UserError(Exception):
-        def __init__(self, message=""):
-            super().__init__(message)
-            self.message = message
+        def __init__(self, data=""):
+            super().__init__(data)
+            self.data = data
 
     class _Return:
         def __init__(self, calldata=None): self.calldata = calldata
 
     class _Result:
-        def __init__(self, message=""): self.message = message
-
-    class _VM:
-        UserError = _UserError
-        Return = _Return
-        Result = _Result
+        def __init__(self, data=""): self.data = data
 
     class _Public:
         view = staticmethod(lambda f: f)
@@ -52,26 +46,30 @@ if "genlayer" not in sys.modules:
             payable = staticmethod(lambda f: f)
         write = _Write()
 
-    class _GL:
-        vm = _VM()
-        public = _Public()
-
-        class Contract: pass
-
-        def __getattr__(self, n): return _Any()
-
-    class _T:
-        def __init__(self, *a, **k): pass
+    class _TreeMap(dict):
         def __class_getitem__(cls, item): return cls
 
-    stub.gl = _GL()
-    stub.allow_storage = lambda c: c
-    stub.Address = str
-    stub.DynArray = _T
-    stub.TreeMap = _T
-    stub.u256 = int; stub.u32 = int; stub.u64 = int; stub.i64 = int
-    stub.__all__ = ["gl", "allow_storage", "Address", "DynArray", "TreeMap", "u256", "u32", "u64", "i64"]
-    sys.modules["genlayer"] = stub
+    class _Contract:
+        pass
+
+    types_mod.Address = str
+    types_mod.u256 = int
+    types_mod.u64 = int
+    types_mod.u32 = int
+    types_mod.__all__ = ["Address", "u256", "u64", "u32"]
+    storage_mod.TreeMap = _TreeMap
+    storage_mod.allow = lambda c: c
+    gl_mod.types = types_mod
+    gl_mod.storage = storage_mod
+    gl_mod.public = _Public()
+    gl_mod.contract = types.SimpleNamespace(Contract=_Contract)
+    gl_mod.vm = types.SimpleNamespace(UserError=_UserError, Return=_Return, Result=_Result, run_nondet=None)
+    gl_mod.nondet = types.SimpleNamespace(exec_prompt=None)
+    gl_mod.chain = types.SimpleNamespace(Account=None)
+    gl_mod.message = types.SimpleNamespace(sender_address="", value=0, raw={})
+    sys.modules["genlayer"] = gl_mod
+    sys.modules["genlayer.types"] = types_mod
+    sys.modules["genlayer.storage"] = storage_mod
 
 import pytest  # noqa: E402
 
@@ -133,7 +131,9 @@ def at(second):
     return (T0 + dt.timedelta(seconds=second)).strftime("%Y-%m-%dT%H:%M:%S.123456Z")
 
 
-class _Payee:
+class _Account:
+    """Stands in for gl.chain.Account; records every transfer."""
+
     def __init__(self, to): self.to = to
 
     def emit_transfer(self, value):
@@ -141,12 +141,13 @@ class _Payee:
         OUT["out"] += int(value)
 
 
-ga._Payee = _Payee
+gl.chain.Account = _Account
 
 
 def _as(sender, value=0, second=0, clock=True):
-    gl.message = types.SimpleNamespace(sender_address=sender, value=value)
-    gl.message_raw = {"datetime": at(second)} if clock else {"datetime": ""}
+    gl.message.sender_address = sender
+    gl.message.value = value
+    gl.message.raw = {"datetime": at(second)} if clock else {"datetime": ""}
 
 
 def _fresh():
@@ -189,7 +190,7 @@ def _send(c, fn, *args, by, value=0, second=0, clock=True):
     except UserError as e:
         BANK["in"] -= value
         SPENT[by] -= value
-        return {"raised": e.message}
+        return {"raised": e.data}
 
 
 def _books(c):
@@ -268,7 +269,7 @@ def network(leader, validators):
         try:
             res = gl.vm.Return(leader_fn())
         except Exception as e:
-            res = gl.vm.Result(str(getattr(e, "message", e)))
+            res = gl.vm.Result(str(getattr(e, "data", e)))
         votes = []
         for v in validators:
             gl.nondet = types.SimpleNamespace(exec_prompt=v)
@@ -281,7 +282,7 @@ def network(leader, validators):
 
 def _net(leader, *validators):
     CALLS.clear()
-    gl.vm.run_nondet_unsafe = network(leader, list(validators) or [leader, leader, leader, leader])
+    gl.vm.run_nondet = network(leader, list(validators) or [leader, leader, leader, leader])
 
 
 # ------------------------------------------------------ the story, step by step
@@ -1122,10 +1123,10 @@ class TestViews:
         c = _fresh()
         _shop(c)
         qid = _quote(c)
-        gl.message_raw = {"datetime": at(ga.ACCEPT_SECONDS)}
+        gl.message.raw = {"datetime": at(ga.ACCEPT_SECONDS)}
         assert not _q(c, qid)["acceptable"]
         _send(c, "accept", qid, by=K, value=TOTAL, second=10)
-        gl.message_raw = {"datetime": at(10 + JOB)}
+        gl.message.raw = {"datetime": at(10 + JOB)}
         q = _q(c, qid)
         assert q["reclaimable"] and not q["invoiceable"] and q["now"] == NOW0 + 10 + JOB
         assert json.loads(c.get_quote("Q2")) == {"error": "no quote Q2"}
@@ -1269,8 +1270,18 @@ WRITES = {"register", "deposit", "withdraw", "quote", "accept", "request_extra",
 
 
 class TestStaticRules:
-    def test_the_first_line_pins_the_runner(self):
-        assert SRC.split("\n")[0] == '# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }'
+    def test_the_first_two_lines_pin_the_v04_runner(self):
+        lines = SRC.split("\n")
+        assert lines[0] == "# v0.4.0"
+        assert lines[1] == '# { "Depends": "py-genlayer:kzybg95x1gn21dw72m7hyg0maaap04n4nx55j9yt6fkdqxtz6bz0" }'
+
+    def test_the_current_api_and_none_of_the_legacy_names(self):
+        assert "import genlayer as gl" in SRC and "from genlayer import *" not in SRC
+        assert "gl.contract.Contract" in SRC and "@gl.storage.allow" in SRC
+        for legacy in ("run_nondet_unsafe", "__receive__", "allow_storage", "gl.Contract)", ".message_raw", "u256(",
+                       "u64(", "u32(", "evm.contract_interface", "_Payee"):
+            assert legacy not in SRC, legacy
+        assert SRC.count("emit_transfer(") == 1 and "gl.chain.Account(Address(_hex(to))).emit_transfer(amount)" in SRC
 
     def test_every_write_refuses_by_sender(self):
         """No write is open: each compares the sender and refuses. A write added later without that fails here."""
@@ -1307,7 +1318,7 @@ class TestStaticRules:
                       and ast.unparse(n).startswith("self.")]
             assert writes and min(writes) > refusal, fn.name
         refuse = ast.unparse(_fn("_refuse"))
-        assert "emit_transfer" in refuse and "'ok': False" in refuse and "'returned'" in refuse
+        assert "_transfer(" in refuse and "'ok': False" in refuse and "'returned'" in refuse
 
     def test_the_model_runs_only_in_invoice_and_rebill_after_every_door(self):
         rounds = [f.name for f in _writes() if "_coverage_round" in _reached(f)]
@@ -1329,8 +1340,8 @@ class TestStaticRules:
         inside = [n for n in ast.walk(leader) if isinstance(n, ast.Call) and ast.unparse(n.func) == "gl.nondet.exec_prompt"]
         assert len(calls) == 2 and len(inside) == 2
         assert [ast.unparse(c.args[0]) for c in inside] == ["_asking(pairs, LISTED)", "_asking(pairs, REVERSED)"]
-        assert "nondet" not in SRC.replace("gl.nondet.exec_prompt", "").replace("gl.vm.run_nondet_unsafe", "")
-        assert SRC.count("gl.vm.run_nondet_unsafe(leader_fn, validator_fn)") == 1
+        assert "nondet" not in SRC.replace("gl.nondet.exec_prompt", "").replace("gl.vm.run_nondet", "")
+        assert SRC.count("gl.vm.run_nondet(leader_fn, validator_fn)") == 1
 
     def test_the_round_returns_a_flat_dict_of_strings(self):
         leader = next(n for n in ast.walk(_fn("_coverage_round")) if isinstance(n, ast.FunctionDef)
@@ -1387,10 +1398,10 @@ class TestStaticRules:
     def test_settlement_moves_money_last_and_at_most_twice(self):
         for name in ("_pay", "reclaim", "withdraw", "_refuse"):
             body = _fn(name).body
-            sends = [i for i, n in enumerate(body) if "emit_transfer" in ast.unparse(n)]
+            sends = [i for i, n in enumerate(body) if "_transfer(" in ast.unparse(n)]
             writes = [i for i, n in enumerate(body) if isinstance(n, ast.Assign) and ast.unparse(n).startswith(
                 ("self.", "q.", "shop."))]
             assert sends and (not writes or max(writes) < min(sends)), name
-        assert ast.unparse(_fn("_pay")).count("emit_transfer") == 2
+        assert ast.unparse(_fn("_pay")).count("_transfer(") == 2
         for name in ("settle", "reclaim", "_close", "_pay"):
             assert not [n for n in ast.walk(_fn(name)) if isinstance(n, (ast.For, ast.While, ast.comprehension))], name

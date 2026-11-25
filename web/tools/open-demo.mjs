@@ -8,15 +8,17 @@
 //
 // The key file holds the same throwaway Studio test key the site's server holds in DEMO_GARAGE_KEY, as
 // {"privateKey": "0x..."} (or "key", "private_key", "DEMO_GARAGE_KEY", keys.garage, or the bare key as a
-// JSON string). It is never printed; only the bot's public address is. Each transaction is followed to
-// a final status. Needs Node 22.18 or later (it reads lib/*.ts directly).
+// JSON string). It is never printed; only the bot's public address is. Studio v0.123 charges fees: each
+// write carries the fees quoted by estimateTransactionFees() (lib/fees.ts) and is followed until it is
+// FINALIZED with its execution result, FINISHED_WITH_RETURN. Needs Node 22.18 or later (it reads lib/*.ts
+// directly).
 
 import { readFileSync } from "node:fs";
 import { createAccount, createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
-import { getAddress } from "viem";
 
 import { cleanKey, keyProblem } from "../lib/demo-key.ts";
+import { EXECUTION_DONE, quoteFees } from "../lib/fees.ts";
 import { DEMO_BOND, DEMO_INVOICE, DEMO_NAME, DEMO_NEEDED, DEMO_QUOTE, DEMO_EXTRA, DEMO_REBILL, DEMO_TITLE, DEMO_CAR } from "../lib/demo-script.ts";
 
 const RPC = "https://studio.genlayer.com/api";
@@ -76,15 +78,16 @@ async function follow(hash) {
     await sleep(4000);
     const tx = await rpc("eth_getTransactionByHash", [hash]);
     const status = String(tx?.status ?? "");
-    if (["FINALIZED", "CANCELED", "UNDETERMINED"].includes(status)) {
+    const exec = String(tx?.txExecutionResultName ?? "");
+    if ((status === "FINALIZED" && EXECUTION_DONE.has(exec)) || ["CANCELED", "UNDETERMINED"].includes(status)) {
       const lr = tx.consensus_data?.leader_receipt;
       const one = Array.isArray(lr) ? lr[0] : lr;
       const text = Buffer.from(one?.result ?? "", "base64").toString("utf8");
       const start = text.indexOf("{");
       try {
-        return { status, json: start >= 0 ? JSON.parse(text.slice(start, text.lastIndexOf("}") + 1)) : null };
+        return { status, exec, json: start >= 0 ? JSON.parse(text.slice(start, text.lastIndexOf("}") + 1)) : null };
       } catch {
-        return { status, json: null };
+        return { status, exec, json: null };
       }
     }
   }
@@ -116,20 +119,20 @@ if (DRY) {
 const client = createClient({ chain: studio, account });
 const balance = BigInt((await rpc("eth_getBalance", [bot, "latest"])) || "0x0");
 if (balance < 3n * 10n ** 18n) {
-  await rpc("sim_fundAccount", { account_address: getAddress(bot), amount: 20e18 });
+  await rpc("sim_fundAccount", { account_address: bot, amount: 20e18 });
   console.log("asked Studio's faucet for 20 GEN");
   await sleep(6000);
 }
 if (!g.registered) {
-  const hash = await client.writeContract({ address: REGISTER, functionName: "register", args: [DEMO_NAME], value: 0n });
+  const hash = await client.writeContract({ address: REGISTER, functionName: "register", args: [DEMO_NAME], value: 0n, fees: await quoteFees(client) });
   const r = await follow(hash);
-  if (!r.json?.ok) fail(`register was not taken: ${r.status} ${JSON.stringify(r.json)} ${EXPLORER}/tx/${hash}`);
+  if (r.exec !== "FINISHED_WITH_RETURN" || !r.json?.ok) fail(`register was not taken: ${r.status} ${r.exec} ${JSON.stringify(r.json)} ${EXPLORER}/tx/${hash}`);
   console.log(`registered as ${DEMO_NAME} ${EXPLORER}/tx/${hash}`);
 }
 if (bond < DEMO_BOND) {
-  const hash = await client.writeContract({ address: REGISTER, functionName: "deposit", args: [], value: DEMO_BOND - bond });
+  const hash = await client.writeContract({ address: REGISTER, functionName: "deposit", args: [], value: DEMO_BOND - bond, fees: await quoteFees(client) });
   const r = await follow(hash);
-  if (!r.json?.ok) fail(`deposit was not taken: ${r.status} ${JSON.stringify(r.json)} ${EXPLORER}/tx/${hash}`);
+  if (r.exec !== "FINISHED_WITH_RETURN" || !r.json?.ok) fail(`deposit was not taken: ${r.status} ${r.exec} ${JSON.stringify(r.json)} ${EXPLORER}/tx/${hash}`);
   console.log(`deposited ${DEMO_BOND - bond} atto; bond ${r.json.bond} ${EXPLORER}/tx/${hash}`);
 } else console.log("bond already at the standing amount; no deposit");
 console.log("done. Set DEMO_GARAGE_KEY on the site; GET /api/demo/status should then say online.");

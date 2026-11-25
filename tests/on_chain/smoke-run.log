@@ -1,69 +1,71 @@
-[keeper] starting 2026-11-18T15:54:09.222Z
-[15:54:13] GARAGE    0xb57313AD54c8656304eaF3b3B8E50089949bbC51  fixes the car; registers, keeps a bond, quotes, asks for an extra, invoices, settles
-           CUSTOMER  0x5EB86ccd6c8540363457347Ad31f8A015C091bb6  owns the car; accepts the quote, approves the extra, tries to invoice it
-           STRANGER  0xa34363fc418EC709236D6FF93e2867F6a771f5a7  holds nothing; tries to settle somebody else's job
+[run] starting 2026-11-25T19:53:44Z
+[19:53:48] GARAGE    0x878157c63B6D129a1e99BC56c3dF6AC9e85DB0d2  fixes the car; registers, keeps a bond, quotes, asks for an extra, invoices, settles
+           CUSTOMER  0x6b9E518beb84C0daF20a8f00dd8342e5A4eb390D  owns the car; accepts the quote, approves the extra, tries to invoice it
+           STRANGER  0x96bf47ac51B0ffe734a4c49745246af81dE1d682  holds nothing; tries to settle somebody else's job
 
-[15:54:13] ---- 1: deploy
-      [15:54:56] GARAGE deploy  0x39246f9b607a17d4e75af1f89b77903b99840d5f7b2b9aa27f201efbff1c193d  3 agree, 0 disagree, 2 idle  SUCCESS  0x282b607E92394E74Babfc5afb602b89Ca3fda98D
-      Garage at 0x282b607E92394E74Babfc5afb602b89Ca3fda98D
-PASS  Garage is deployed and holds nothing yet  - {"garages":0,"quotes":0,"invoiced":0,"rebills":0,"settled":0,"reclaimed":0,"refusals_refunded":0,"covered":0,"not_covered":0,"unclear":0,"bonds_free":"0","bonds_locked":"0","escrow_held":"0","paid_to_garages":"0","penalties_to_customers":"0","refunded_to_customers":"0","balance_owed":"0","now":1795017296}
+[19:53:48] ---- 1: deploy
+      [19:54:32] GARAGE deploy  0x780336bb1b635f596bc2745f8d7ab15c95397e02c7007de8556acb5cd0ff4516  FINALIZED FINISHED_WITH_RETURN  3 agree, 0 disagree, 2 idle  fee 79144250002823  0x2c565F93f564deeD044cBf15FcbE3d0DD36aaC0f
+      Garage at 0x2c565F93f564deeD044cBf15FcbE3d0DD36aaC0f
+PASS  GARAGE deploys contracts/garage.py with quoted fees: FINALIZED, FINISHED_WITH_RETURN  - 3 agree, 0 disagree, 2 idle  fee 79144250002823
+PASS  Garage is deployed and holds nothing yet  - {"garages":0,"quotes":0,"invoiced":0,"rebills":0,"settled":0,"reclaimed":0,"refusals_refunded":0,"covered":0,"not_covered":0,"unclear":0,"bonds_free":"0","bonds_locked":"0","escrow_held":"0","paid_to_garages":"0","penalties_to_customers":"0","refunded_to_customers":"0","balance_owed":"0","now":1795636472}
 
-[15:54:57] ---- 2: the garage and its bond
-      [15:55:35] GARAGE register(Northgate Motors)  0xf456b356eeb66e0d71c3a6cbfb0c90ad581155b3dbc4a57a9625c74f71438cdc  3 agree, 0 disagree, 2 idle  SUCCESS
-PASS  GARAGE registers as Northgate Motors; no value, no model  - 3 agree, 0 disagree, 2 idle  {"ok": true, "garage": "0xb57313ad54c8656304eaf3b3b8e50089949bbc51", "name": "Northgate Motors", "min_standing": "100000
-      [15:56:14] GARAGE deposit() +0.2 GEN  0x558e4578ac5579dbca96594a5179c4d361c1a925bc6cbde21f2dac0307a6590f  4 agree, 0 disagree, 1 idle  SUCCESS
-PASS  GARAGE deposits a 0.2 GEN standing bond; no model runs  - 4 agree, 0 disagree, 1 idle
+[19:54:33] ---- 2: the garage and its bond
+      [19:55:18] GARAGE register(Northgate Motors)  0x7443ea85d946dafe6138c132c5270e8aea2d420b6c938ac2d41c44c8e754a396  FINALIZED FINISHED_WITH_RETURN  4 agree, 0 disagree, 1 idle  fee 78630000003529
+PASS  GARAGE registers as Northgate Motors; no value, no model  - 4 agree, 0 disagree, 1 idle  {"ok": true, "garage": "0x878157c63b6d129a1e99bc56c3df6ac9e85db0d2", "name": "Northgate Motors", "min_standing": "100000
+      [19:56:00] GARAGE deposit() +0.2 GEN  0x27b7af86b5eb518770b50596452ab4233d4ce1bb01cded904743935936a509e8  FINALIZED FINISHED_WITH_RETURN  3 agree, 0 disagree, 2 idle  fee 78629750002823
+PASS  GARAGE deposits a 0.2 GEN standing bond; no model runs  - 3 agree, 0 disagree, 2 idle
 
-[15:56:15] ---- 3: the quote, an invoice before acceptance, a short payment, and the acceptance
-      [15:56:53] GARAGE quote(0x5EB86ccd6c8540363457, Front brake overhaul, 2016 Skoda Octavia 1.6, [{"text":"Front brake , 259200)  0xcb1448a42b35eef955b70bf144acbeb9c6ae3da65bf20c6d0d3469a683fc3cf0  4 agree, 0 disagree, 1 idle  SUCCESS
-PASS  GARAGE quotes CUSTOMER three lines, 0.22 GEN in all  - 4 agree, 0 disagree, 1 idle  {"ok": true, "quote": "Q1", "customer": "0x5eb86ccd6c8540363457347ad31f8a015c091bb6", "total": "220000000000000000", "lines": 3, "accept_by"
-      [15:57:32] GARAGE invoice(Q1, [{"bills":1,"text":"Re)  0x4a9f9620aa3b94fd320a9c3b2fdc2f7420a3894a05723e1cf58b38b807328058  3 agree, 0 disagree, 2 idle  ERROR
-PASS  GARAGE invoices Q1 before it is accepted: refused, no model runs  - 3 agree, 0 disagree, 2 idle  [EXPECTED] Q1 has not been accepted, so nothing is held to invoice against
-      [15:58:14] CUSTOMER accept(Q1) +0.2 GEN  0x742b50a9b5114cfd55ef6e88bf9d6d095bcd392a605f6e073c2034d97621d037  3 agree, 0 disagree, 2 idle  SUCCESS
+[19:56:00] ---- 3: the quote, an invoice before acceptance, a short payment, and the acceptance
+      [19:56:42] GARAGE quote(0x6b9E518beb84C0daF20a, Front brake overhaul, 2016 Skoda Octavia 1.6, [{"text":"Front brake , 259200)  0x5e82ec7a269fe0baa6ec9b26f600985e545d6cae19a4aabb009b31e90fd43e70  FINALIZED FINISHED_WITH_RETURN  3 agree, 0 disagree, 2 idle  fee 78643000002823
+PASS  GARAGE quotes CUSTOMER three lines, 0.22 GEN in all  - 3 agree, 0 disagree, 2 idle  {"ok": true, "quote": "Q1", "customer": "0x6b9e518beb84c0daf20a8f00dd8342e5a4eb390d", "total": "220000000000000000", "lines": 3, "accept_by"
+      [19:57:27] GARAGE invoice(Q1, [{"bills":1,"text":"Re)  0x95453ac4ccd0426d494253477b430f0fd4847623ab919971cee8072569fb95e0  FINALIZED FINISHED_WITH_ERROR  4 agree, 0 disagree, 1 idle  fee 78628000003529
+PASS  GARAGE invoices Q1 before it is accepted: refused, no model runs  - 4 agree, 0 disagree, 1 idle  [EXPECTED] Q1 has not been accepted, so nothing is held to invoice against
+      [19:58:18] CUSTOMER accept(Q1) +0.2 GEN  0x5eec5d3d727ff6e707213a10d971c45cef5d32412c3cec9e2db0a622107ba939  FINALIZED FINISHED_WITH_RETURN  3 agree, 0 disagree, 2 idle  fee 126304250002823
 PASS  CUSTOMER accepts paying 0.2 GEN, not the total: refused, and every atto comes back in the same transaction  - 3 agree, 0 disagree, 2 idle  {"ok": false, "reason": "accept Q1 by sending its total, exactly 220000000000000000 atto; this sends 200000000000000000", "returned": "20000
-      [15:58:53] CUSTOMER accept(Q1) +0.22 GEN  0xf235da7632304531cdf004a9bf4dc47de887f7d76a3d38f0ebedd26ad4740b5d  3 agree, 0 disagree, 2 idle  SUCCESS
-PASS  CUSTOMER accepts paying exactly 0.22 GEN, held in escrow  - 3 agree, 0 disagree, 2 idle  {"ok": true, "quote": "Q1", "status": "accepted", "held": "220000000000000000", "invoice_by": 1795276696}
+      [19:59:02] CUSTOMER accept(Q1) +0.22 GEN  0x0d207d7e139023e68520cf9ac0a5563eed321ac1d6d571cf2746b8ee2fabc371  FINALIZED FINISHED_WITH_RETURN  3 agree, 0 disagree, 2 idle  fee 78630000002823
+PASS  CUSTOMER accepts paying exactly 0.22 GEN, held in escrow  - 3 agree, 0 disagree, 2 idle  {"ok": true, "quote": "Q1", "status": "accepted", "held": "220000000000000000", "invoice_by": 1795895900}
 
-[15:58:54] ---- 4: an extra line, approved by the customer's own payment
-      [15:59:32] GARAGE request_extra(Q1, Front wiper blades, pa, 15000000000000000)  0x4bd59908d91f7d35a01d854934d54d0b6f25234e66a3bd2a341ba38b18497773  3 agree, 0 disagree, 2 idle  SUCCESS
-PASS  GARAGE asks for front wiper blades, 0.015 GEN, as line 4  - 3 agree, 0 disagree, 2 idle  {"ok": true, "quote": "Q1", "line": 4, "price": "15000000000000000", "status": "pending"}
-      [16:00:11] CUSTOMER approve_extra(Q1, 4) +0.015 GEN  0xb846235f39dc7fdee6d2635a9006c38f04f93ca065d46920c093f1b2f72680de  3 agree, 0 disagree, 2 idle  SUCCESS
-PASS  CUSTOMER approves line 4 by paying 0.015 GEN  - 3 agree, 0 disagree, 2 idle  {"ok": true, "quote": "Q1", "line": 4, "status": "approved", "held": "235000000000000000"}
+[19:59:03] ---- 4: an extra line, approved by the customer's own payment
+      [19:59:48] GARAGE request_extra(Q1, Front wiper blades, pa, 15000000000000000)  0xdb5909acf8561ebd5c1c88e46563116fb2f22d17f4aa5ae4084750bbfd890940  FINALIZED FINISHED_WITH_RETURN  5 agree, 0 disagree, 0 idle  fee 78631250004235
+PASS  GARAGE asks for front wiper blades, 0.015 GEN, as line 4  - 5 agree, 0 disagree, 0 idle  {"ok": true, "quote": "Q1", "line": 4, "price": "15000000000000000", "status": "pending"}
+      [20:00:37] CUSTOMER approve_extra(Q1, 4) +0.015 GEN  0x472654871660081df4b816bc1428710b32ca1b6947497d8e77591f40fd1e10fd  FINALIZED FINISHED_WITH_RETURN  4 agree, 0 disagree, 1 idle  fee 78629750003529
+PASS  CUSTOMER approves line 4 by paying 0.015 GEN  - 4 agree, 0 disagree, 1 idle  {"ok": true, "quote": "Q1", "line": 4, "status": "approved", "held": "235000000000000000"}
 
-[16:00:11] ---- 5: the invoice, judged line by line
-      [16:00:49] CUSTOMER invoice(Q1, [{"bills":1,"text":"Re)  0x76c83cfc680f5a987e61894f4069b6db3edbc8d526416789c7da4fc02ea772bb  3 agree, 0 disagree, 2 idle  ERROR
-PASS  CUSTOMER tries to invoice the job: refused, only the garage that wrote it invoices  - 3 agree, 0 disagree, 2 idle  [EXPECTED] only the garage that wrote Q1 may invoice it
-      [16:01:48] GARAGE invoice(Q1, [{"bills":1,"text":"Re)  0xdf0c1b4202744bb4b09f20dfb60c7d9ae92d0bad292170b97b79814f0b76ee2f  3 agree, 0 disagree, 2 idle  SUCCESS
+[20:00:37] ---- 5: the invoice, judged line by line
+      [20:01:28] CUSTOMER invoice(Q1, [{"bills":1,"text":"Re)  0xf6a4e58e47ce92bba1307d0127952671703bb95cbc1c9faf5cfa3c56dfe8a434  FINALIZED FINISHED_WITH_ERROR  5 agree, 0 disagree, 0 idle  fee 78628000004235
+PASS  CUSTOMER tries to invoice the job: refused, only the garage that wrote it invoices  - 5 agree, 0 disagree, 0 idle  [EXPECTED] only the garage that wrote Q1 may invoice it
+      [20:02:27] GARAGE invoice(Q1, [{"bills":1,"text":"Re)  0xa19931985510c2b6eae870912d1d8f72c91bcc56f8d6c6a7d0333cd08e632a5d  FINALIZED FINISHED_WITH_RETURN  3 agree, 0 disagree, 2 idle  fee 128881750002823
 PASS  GARAGE invoices six lines; one consensus round of two askings: covered x4, not covered, unclear  - 3 agree, 0 disagree, 2 idle  CCCCNU
 PASS  and in the same transaction GARAGE is paid 0.215 GEN, the fluid capped at its approved 0.02  - {"garage":"215000000000000000","customer":"5000000000000000"}
 PASS  and 0.005 GEN, 20 percent of the cabin filter, moves from GARAGE's bond to CUSTOMER  - {"garage":"215000000000000000","customer":"5000000000000000"}
 
-[16:01:49] ---- 6: a second invoice, the same words re-billed, a stranger, and the settlement
-      [16:02:29] GARAGE invoice(Q1, [{"bills":1,"text":"Re)  0x45ab89d1035eec580215b506597d37cd0a6a943071cf37e93b6647dd08a93ad2  3 agree, 0 disagree, 2 idle  ERROR
+[20:02:28] ---- 6: a second invoice, the same words re-billed, a stranger, and the settlement
+      [20:03:12] GARAGE invoice(Q1, [{"bills":1,"text":"Re)  0xc9e7dfafa9fe6bef95b8bd75b7cdc4b1653bb50c29d72b89acee8f2c8fdd7df7  FINALIZED FINISHED_WITH_ERROR  3 agree, 0 disagree, 2 idle  fee 78628000002823
 PASS  GARAGE sends a second invoice: refused  - 3 agree, 0 disagree, 2 idle  [EXPECTED] Q1 is invoiced; it was invoiced once and takes no second invoice
-      [16:03:09] GARAGE rebill(Q1, [{"line":6,"text":"SUN)  0xf4c944f87dded39ba59dd77c27fd6c64da637cb22dcd6143e948c52876d2578b  3 agree, 0 disagree, 2 idle  ERROR
+      [20:03:51] GARAGE rebill(Q1, [{"line":6,"text":"SUN)  0xd69c0986e9d211d9bf85e70f8becd377a0359470ee7af101b0428f5c1cfc4f50  FINALIZED FINISHED_WITH_ERROR  3 agree, 0 disagree, 2 idle  fee 78628000002823
 PASS  GARAGE re-bills Sundries as SUNDRIES.: refused by fingerprint, the same words, no model runs  - 3 agree, 0 disagree, 2 idle  [EXPECTED] re-billed line 6 says the same words as the line that was unclear; a re-bill must say what the work or part w
-      [16:03:52] STRANGER settle(Q1)  0x40959db21397d7a1aeba79941fd498589027d9e0868caa336a1ced2c6af0ca1d  3 agree, 0 disagree, 2 idle  ERROR
+      [20:04:32] STRANGER settle(Q1)  0x25a6d6313776c01a8b2a91f4b528a65b64bf4c7ffb6e4dfc643e4401be18b36b  FINALIZED FINISHED_WITH_ERROR  3 agree, 0 disagree, 2 idle  fee 78628000002823
 PASS  STRANGER tries to settle the job: refused  - 3 agree, 0 disagree, 2 idle  [EXPECTED] only the garage or the customer of Q1 may settle it
-      [16:04:33] GARAGE settle(Q1)  0x61356ff8fa7c9b867fce0a86f6a19887f92ded2329480242f985a94db51bc0cc  4 agree, 0 disagree, 1 idle  SUCCESS
-PASS  GARAGE settles, waiving its re-bill: what was never paid out goes back to CUSTOMER  - 4 agree, 0 disagree, 1 idle  {"ok": true, "quote": "Q1", "status": "settled", "mask": "", "paid": "0", "penalty": "0", "refunded": "20000000000000000", "held": "0", "loc
+      [20:05:11] GARAGE settle(Q1)  0xe89ad0198ee85c6d9fa55c82f20b7e0ae9cd04c91340d61602f69d0b247f9f90  FINALIZED FINISHED_WITH_RETURN  3 agree, 0 disagree, 2 idle  fee 126309000002823
+PASS  GARAGE settles, waiving its re-bill: what was never paid out goes back to CUSTOMER  - 3 agree, 0 disagree, 2 idle  {"ok": true, "quote": "Q1", "status": "settled", "mask": "", "paid": "0", "penalty": "0", "refunded": "20000000000000000", "held": "0", "loc
 
-[16:04:33] ---- 7: the garage takes its free bond back
-      [16:05:18] GARAGE withdraw(195000000000000000)  0xd60f3bbe3ffe60ab9f825c347e92446456b9c98ccd3615c6c9626bdcf5709698  3 agree, 0 disagree, 2 idle  SUCCESS
+[20:05:12] ---- 7: the garage takes its free bond back
+      [20:05:52] GARAGE withdraw(195000000000000000)  0x2aab6037a8724342440bafa7160f3420dfd8b8f1ac7470308fabd8cc41c29cf7  FINALIZED FINISHED_WITH_RETURN  3 agree, 0 disagree, 2 idle  fee 126305000002823
 PASS  GARAGE withdraws its free bond, 0.2 GEN less the 0.005 penalty  - 3 agree, 0 disagree, 2 idle  {"ok": true, "returned": "195000000000000000", "bond": "0"}
 
-[16:05:18] ---- 8: the views, the code, and the money
+[20:05:52] ---- 8: the views, the code, and the money
 PASS  get_quote(Q1): settled, four approved lines, six invoice lines with their verdicts  - ["covered","covered","covered","covered","not_covered","unclear"]
 PASS  the fluid line was paid 0.02 GEN, its approved price, not the 0.03 billed  - {"line":2,"bills":2,"text":"Brake fluid flush and refill, DOT 4","price":"30000000000000000","verdict":"covered","paid":"20000000000000000","penalty":"0","why":"both askings found the approved line covers this invoice line, so it was paid at its invoice price, never more than what was left of the approved line","rebill_text":"","rebill_price":"0","rebill_verdict":"","rebill_paid":"0","rebill_penalty":"0"}
-PASS  quotes_of(CUSTOMER): the one job, as customer  - [{"quote":"Q1","garage":"0xb57313ad54c8656304eaf3b3b8e50089949bbc51","customer":"0x5eb86ccd6c8540363457347ad31f8a015c091bb6","title":"Front brake overhaul","car":"2016 Skoda Octavia 1.6 TDI estate","status":"settled","total":"220000000000000000","held":"0","paid":"215000000000000000","mask":"CCCCNU","invoice_by":1795276696,"role":"customer"}]
-PASS  stats(): one quote, one invoice, four covered, one not covered, one unclear, nothing held  - {"garages":1,"quotes":1,"invoiced":1,"rebills":0,"settled":1,"reclaimed":0,"refusals_refunded":1,"covered":4,"not_covered":1,"unclear":1,"bonds_free":"0","bonds_locked":"0","escrow_held":"0","paid_to_garages":"215000000000000000","penalties_to_customers":"5000000000000000","refunded_to_customers":"20000000000000000","balance_owed":"0","now":1795017925}
+PASS  quotes_of(CUSTOMER): the one job, as customer  - [{"quote":"Q1","garage":"0x878157c63b6d129a1e99bc56c3df6ac9e85db0d2","customer":"0x6b9e518beb84c0daf20a8f00dd8342e5a4eb390d","title":"Front brake overhaul","car":"2016 Skoda Octavia 1.6 TDI estate","status":"settled","total":"220000000000000000","held":"0","paid":"215000000000000000","mask":"CCCCNU","invoice_by":1795895900,"role":"customer"}]
+PASS  stats(): one quote, one invoice, four covered, one not covered, one unclear, nothing held  - {"garages":1,"quotes":1,"invoiced":1,"rebills":0,"settled":1,"reclaimed":0,"refusals_refunded":1,"covered":4,"not_covered":1,"unclear":1,"bonds_free":"0","bonds_locked":"0","escrow_held":"0","paid_to_garages":"215000000000000000","penalties_to_customers":"5000000000000000","refunded_to_customers":"20000000000000000","balance_owed":"0","now":1795637159}
 PASS  rules(): the question word for word, two askings, the combine table  - value,question,answers,askings,prompt,reading,combine,compared,not_asked,money,who,no_veto,settlement,sizes,limits,untrusted
 PASS  the contract's own balance is zero  - 0
-PASS  the code deployed at 0x282b607E92394E74Babfc5afb602b89Ca3fda98D is byte for byte contracts/garage.py  - 66218 bytes, sha256 f9cf74268c2a1d60d35b76c338143bb268b78574e31342fde811b6fd1e0f362b
-PASS  over the run every account ends exactly where the receipts say: GARAGE 0.21 GEN up, CUSTOMER 0.21 GEN down  - GARAGE 0.21 (receipts 0.21)  CUSTOMER -0.21 (receipts -0.21)  STRANGER 0 (receipts 0)
+PASS  the code deployed at 0x2c565F93f564deeD044cBf15FcbE3d0DD36aaC0f is byte for byte contracts/garage.py  - 65625 bytes, sha256 2828c88a9fc98589d30ced6b52bb8283e716660f806667ac8eed88e7d6f5ad5a
+PASS  over the run every account ends exactly where the receipts say, less exactly the fees its own transactions paid: GARAGE 0.21 GEN up, CUSTOMER 0.21 GEN down  - GARAGE 0.20898894199996612 (receipts 0.21, fees 1011058000033877 atto)  CUSTOMER -0.2103621920000134 (receipts -0.21, fees 362192000013410 atto)  STRANGER -0.000078628000002823 (receipts 0, fees 78628000002823 atto)
+PASS  every transaction of the run is FINALIZED with an execution result, and every one paid a settled fee  - RETURN RETURN RETURN RETURN ERROR RETURN RETURN RETURN RETURN ERROR RETURN ERROR ERROR ERROR RETURN RETURN
 
-26 passed, 0 failed
-Garage: 0x282b607E92394E74Babfc5afb602b89Ca3fda98D
+28 passed, 0 failed
+Garage: 0x2c565F93f564deeD044cBf15FcbE3d0DD36aaC0f
+fees paid (atto): GARAGE 1011058000033877  CUSTOMER 362192000013410  STRANGER 78628000002823
 transactions: 16 in 16 steps; sent a second time: none
-
 exit 0
